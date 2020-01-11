@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,90 +8,134 @@ namespace 扫雷
 {
     class Program
     {
+        const int width = 30;
+        const int height = 16;
+        static Player player = new Player();
+        static ConsoleCanvas canvas = null;
+        static char[,] buffer = null;
+        static ConsoleColor[,] color_buffer = null;
+        public static string below_text = "";
+        public static string level_target = "";
+        public static string record_text = "";
+        public static void record_file()
+        {
+            // 记录
+        }
+
 
         public const int minesweeper = 99; // 雷数
-        public const int li = 16; // 高
-        public const int lj = 30; // 宽
+        //public const int li = 16; // 高
+        //public const int lj = 30; // 宽
         static int[,] initMine()
         {
-            int[,] mine = randomMap.generateMap(li, lj, minesweeper);
+            int[,] mine = randomMap.generateMap(height, width, minesweeper);
             return mine;
         }
 
-        static void OutMine(int[,] Mine)  // 显示
+        static void DrawOther(int[,] Mine)  // 显示
         {
-            for (int i = 0; i <= Mine.GetLength(1); i++)
-            {
-                if (i > 0)
-                {
-                    Console.Write("{0,2} ", i);
-                }
-                else
-                {
-                    Console.Write("  ");
-                }
-            }
-            Console.WriteLine();
             for (int i = 0; i < Mine.GetLength(0); i++)
             {
-                Console.Write("{0,-2}", i + 1);
                 for (int j = 0; j < Mine.GetLength(1); j++)
                 {
                     if (Mine[i, j] == -1)
                     {
-                        Console.Write(" * ");
+                        color_buffer[i, j] = ConsoleColor.Red;
+                        buffer[i, j] = '*';
                     }
                     else if (Mine[i, j] > -1)
                     {
-                        Console.Write("{0,2} ", Mine[i, j]);
+                        color_buffer[i, j] = ConsoleColor.DarkYellow;
+                        buffer[i, j] = (char)(Mine[i, j] + '0');
+                    }
+                    else if (Mine[i ,j] == -10)
+                    {
+                        color_buffer[i, j] = ConsoleColor.Green;
+                        buffer[i, j] = 'x';// 标记
                     }
                     else
                     {
-                        Console.Write(" - ");
+                        color_buffer[i, j] = ConsoleColor.Gray;
+                        buffer[i, j] = '-';
                     }
                 }
-                Console.WriteLine();
+            }
+            color_buffer[player.i, player.j] = ConsoleColor.Green;
+            buffer[player.i, player.j] = '@';
+        }
+
+        static void DrawAll(int[,] Mine)  // 显示
+        {
+            canvas.ClearBuffer_DoubleBuffer();
+            DrawOther(Mine);
+            DrawBelowInfo();
+            canvas.Refresh_DoubleBuffer();
+            
+        }
+
+        static void DrawBelowInfo()
+        {
+            for (int i = 0; i < below_text.Length; ++i)
+            {
+                buffer[height, i] = below_text[i];
+            }
+            for (int i = 0; i < level_target.Length; i++)
+            {
+                buffer[height+1, i] = level_target[i];
             }
         }
 
-        static int[] InputNum() // 读取输入
+        static int InputNum() // 读取输入
         {
-            char[] separ = { ' ' };
-            Console.WriteLine("扫雷游戏棋盘如上，请输入位置(格式为：数字空格数字)：");
-            int[] length = new int[2]; // 存储输入的i j
+            int count = -1;// 标记或者选择
+            ConsoleKeyInfo key = Console.ReadKey(true);
 
-            bool b;
-            do
+            if (key.Key == ConsoleKey.I)
             {
-                b = false;
-                string[] splits = Console.ReadLine().Split(separ);
-
-                if (int.TryParse(splits[0], out length[0]) && int.TryParse(splits[1], out length[1]))
+                if (player.i > 0)
                 {
-                    length[0]--;
-                    length[1]--;
+                    player.i -= 1;
                 }
-                else
+            }
+            else if (key.Key == ConsoleKey.K)
+            {
+                if (player.i < width - 1)
                 {
-                    Console.WriteLine("输入有误， 请重新输入：");
-                    b = true;
+                    player.i += 1;
                 }
-                if (length[0] < 0 || length[0] > li || length[1] < 0 || length[1] > lj)
+            }
+            else if (key.Key == ConsoleKey.J)
+            {
+                if (player.j > 0)
                 {
-                    Console.WriteLine("输入有误， 请重新输入：");
-                    b = true;
+                    player.j -= 1;
                 }
-            } while (b);
-
-            return length;
+            }
+            else if (key.Key == ConsoleKey.L)
+            {  
+                if (player.j < width - 1)
+                {
+                    player.j += 1;
+                }
+            }
+            else if (key.Key == ConsoleKey.U)
+            {
+                // 标记当前
+                count = 0;
+            }
+            else if (key.Key == ConsoleKey.A)
+            {
+                // 打开当前
+                count = 1; 
+            }
+            return count;
         }
 
 
         static bool StartGame(int[,] mine, int[,] userMine)
         {
-            int[] length = InputNum();
-            int i = length[0];
-            int j = length[1];
+            int i = player.i;
+            int j = player.j;
 
             if (mine[i, j] == 0)
             {
@@ -101,6 +145,7 @@ namespace 扫雷
             else if (mine[i, j] == -1)
             {
                 // 为雷时退出
+                userMine[i, j] = mine[i, j];
                 return false;
             }
             else if (mine[i, j] > 0)
@@ -220,29 +265,28 @@ namespace 扫雷
                 }
             }
         }
-        static bool GameOver(int[,] userMine)
+        static bool GameOver(int[,] userMine, int[,] Mine)
         {
-            OutMine(userMine);
+            DrawAll(userMine);
             int blank = 0;
             for (int i = 0; i < userMine.GetLength(0); i++)
             {
                 for (int j = 0; j < userMine.GetLength(1); j++)
                 {
-                    if (userMine[i, j] == -2) // 未点开的空白处
+                    if (userMine[i, j] >= 0 ) 
                     {
                         blank++;
-                        // Console.WriteLine("{0} , {1}  blank{2}", i, j, blank);
                     }
                 }
             }
-            if (blank == minesweeper)// 未点开的"空白处"等于"雷数" 游戏结束
+            if (blank == (height * width - minesweeper))// 点开所有数字
             {
                 return true;
             }
             return false;
         }
 
-        static int[,] initUser(int lengthi, int lengthj) // 保存的玩家地图 初始化
+        static int[,] InitUser(int lengthi, int lengthj) // 初始化玩家的地图 
         {
             int[,] newMine = new int[lengthi, lengthj];
             for (int i = 0; i < lengthi; i++)
@@ -255,7 +299,7 @@ namespace 扫雷
             return newMine;
         }
 
-        static int[,] SaveMap(int[,] mine)
+        static int[,] SaveMap(int[,] mine) 
         {
             int[,] save = new int[mine.GetLength(0), mine.GetLength(1)];
             for (int i = 0; i < mine.GetLength(0); i++)
@@ -268,38 +312,74 @@ namespace 扫雷
             return save;
         }
 
+
         static void Main(string[] args)
         {
+
+            int flag = minesweeper;
+            canvas = new ConsoleCanvas(width, height+3);
+            buffer = canvas.GetBuffer();
+            color_buffer = canvas.GetColorBuffer();
+            player.SetPos(0, 0); // 默认位置
+
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch(); // 计算用时
             int[,] mine = initMine();
             int[,] saveMine = SaveMap(mine);
-            int[,] userMine = initUser(mine.GetLength(0), mine.GetLength(1));
+            int[,] userMine = InitUser(mine.GetLength(0), mine.GetLength(1));
 
-            // OutMine(saveMine);
-            // OutMine(userMine);
 
             bool b = true;
             string res = "不好意思，您输了。下次走运！";
             sw.Start(); // 计时开始
             while (b)
             {
-                OutMine(userMine);
-                b = StartGame(mine, userMine); // 判断输入是否为 雷
-                if (GameOver(userMine))
+                below_text = "按U标记,按A打开,按IJKL移动";
+                level_target = $"当前雷数{minesweeper},剩余标记{flag}";
+                DrawAll(userMine); // 显示棋盘
+                int count = InputNum();
+                if (count == 1)
                 {
-                    res = "恭喜！您赢了！";
-                    break;
+                    b = StartGame(mine, userMine); // 
+                    if (GameOver(userMine, saveMine))
+                    {
+                        res = "恭喜！您赢了！";
+                        break;
+                    }
                 }
-                Console.Clear();
+                else if (count == 0)
+                {
+                    if (userMine[player.i, player.j] != -10 && userMine[player.i, player.j] < 0)
+                    {
+                        userMine[player.i, player.j] = -10;
+                        flag--;
+                    }
+                    else if (userMine[player.i, player.j] == -10)
+                    {
+                        userMine[player.i, player.j] = -2;
+                        flag++;
+                    }
+                } 
             }
             sw.Stop(); // 计时结束
-
-            Console.Clear();
-            OutMine(saveMine);
-            Console.WriteLine(res);
+            canvas.ClearBuffer_DoubleBuffer();
+            DrawOther(saveMine);
+            canvas.Refresh_DoubleBuffer();
+            Console.WriteLine();
+            Console.Write(res);
             Console.WriteLine("时间：{0} 秒", sw.ElapsedMilliseconds / 1000);
+            Console.ReadLine();
+        }
+    }
 
-            Console.ReadKey();
+    class Player
+    {
+        public int i;
+        public int j;
+
+        public void SetPos(int _i, int _j)
+        {
+            i = _i;
+            j = _j;
         }
     }
 }
