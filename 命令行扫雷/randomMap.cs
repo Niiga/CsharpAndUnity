@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace 扫雷
 {
-    class randomMap
+    class RandomMap
     {
         public static int[,] generateMap(int Lengthi, int Lengthj, int numberMine)
         {
