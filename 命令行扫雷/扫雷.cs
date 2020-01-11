@@ -28,7 +28,7 @@ namespace 扫雷
         //public const int lj = 30; // 宽
         static int[,] initMine()
         {
-            int[,] mine = randomMap.generateMap(height, width, minesweeper);
+            int[,] mine = RandomMap.generateMap(height, width, minesweeper);
             return mine;
         }
 
